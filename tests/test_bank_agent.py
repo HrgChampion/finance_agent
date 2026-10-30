@@ -35,7 +35,17 @@ def test_every_agent_has_its_own_retry_strategy():
     assert len({id(s) for s in strategies}) == len(agents)        # retry state is per agent
 
 
-@pytest.mark.parametrize("text", ["Compare AAPL and MSFT", "what is apple's P/E?", ""])
+def test_new_orchestrator_does_not_inherit_specialist_history():
+    old_run = [{"role": "user", "content": [{"text": "AAPL"}]}]
+    for specialist in bank_agent.SPECIALISTS:
+        specialist.messages = list(old_run)              # as if a previous run had used them
+    orchestrator = bank_agent.orchestrator_agent()
+    assert all(s.messages == [] for s in bank_agent.SPECIALISTS)
+    wrappers = [orchestrator.tool_registry.registry[s.name] for s in bank_agent.SPECIALISTS]
+    assert all(w._initial_messages == [] for w in wrappers)   # the "fresh" state each call restores
+
+
+@pytest.mark.parametrize("text",["Compare AAPL and MSFT", "what is apple's P/E?", ""])
 def test_is_ticker_rejects_questions_without_a_lookup(monkeypatch, text):
     monkeypatch.setattr(bank_agent, "_info", lambda t: pytest.fail("should not look up a sentence"))
     assert not bank_agent.is_ticker(text)

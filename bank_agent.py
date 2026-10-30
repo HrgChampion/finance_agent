@@ -315,6 +315,11 @@ def orchestrator_agent():
                   (personal tax, crypto price predictions, unrelated topics), reply in one sentence that it is
                   outside your scope, without calling any specialist."""
 
+    # as_tool() snapshots each specialist's current history as its "fresh" state and restores it before
+    # every call. Clear it first, or a second orchestrator would inherit the previous run's conversation.
+    for specialist in SPECIALISTS:
+        specialist.messages = []
+
     agent = Agent(
         name ="OrchestratorAgent",
         system_prompt=prompt,

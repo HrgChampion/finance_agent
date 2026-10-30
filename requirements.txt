@@ -1,0 +1,7 @@
+yfinance
+pandas
+python-dotenv
+strands-agents[litellm]
+truststore
+torch
+transformers

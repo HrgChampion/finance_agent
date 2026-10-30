@@ -1,0 +1,5 @@
+.env
+.venv
+ca_bundle.pem
+__pycache__/
+briefs/

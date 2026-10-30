@@ -15,12 +15,15 @@ from strands.hooks import (
 log = logging.getLogger("finance_agent")
 
 
-def setup_logging(log_file):
-    """Log to the console and to a file, each line timestamped to the millisecond."""
+def setup_logging(log_file, console=True):
+    """Log to a file (and the console), each line timestamped to the millisecond."""
     fmt = logging.Formatter("%(asctime)s.%(msecs)03d | %(message)s", datefmt="%H:%M:%S")
     log.setLevel(logging.INFO)
     log.propagate = False
-    for handler in (logging.StreamHandler(), logging.FileHandler(log_file, mode="w", encoding="utf-8")):
+    handlers = [logging.FileHandler(log_file, mode="w", encoding="utf-8")]
+    if console:
+        handlers.append(logging.StreamHandler())
+    for handler in handlers:
         handler.setFormatter(fmt)
         log.addHandler(handler)
     litellm.callbacks = [ModelLogger()]

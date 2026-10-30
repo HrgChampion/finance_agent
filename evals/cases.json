@@ -1,0 +1,29 @@
+{
+  "briefs": ["AAPL", "JPM", "RELIANCE.NS"],
+  "questions": [
+    {
+      "question": "What is Apple's debt to equity ratio?",
+      "required": ["FinancialDataAgent"],
+      "allowed": ["FinancialDataAgent"]
+    },
+    {
+      "question": "Is there any negative news about Tesla?",
+      "required_any": ["NewsAndSentimentAgent", "RiskAgent"],
+      "allowed": ["NewsAndSentimentAgent", "RiskAgent"]
+    },
+    {
+      "question": "Compare the operating margins of Microsoft and Google",
+      "required": ["FinancialDataAgent"],
+      "allowed": ["FinancialDataAgent"]
+    },
+    {
+      "question": "Is Nvidia overvalued?",
+      "required": ["FinancialDataAgent", "ValuationAgent"],
+      "allowed": ["FinancialDataAgent", "ValuationAgent"]
+    },
+    {
+      "question": "What's the weather in Delhi today?",
+      "allowed": []
+    }
+  ]
+}

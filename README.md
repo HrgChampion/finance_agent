@@ -107,10 +107,56 @@ python -m pytest
 
 The tests cover the tools and the non-LLM parts of the agent code: DCF maths and its guards (negative
 free cash flow, currency mismatch), ratios, peer premiums, currency labels, news filtering, sentiment
-labels, retry rules and the run summary. yfinance and FinBERT are replaced with fakes, so the suite
+labels, retry rules, the run summary, specialist history isolation, and the evaluation harness's own
+scoring logic. yfinance and FinBERT are replaced with fakes, so the suite
 runs offline, spends no tokens and finishes in under 30 seconds.
 
 To try the tools against live Yahoo Finance data, without any LLM: `python tools.py`.
+
+## Evaluation
+
+`python evaluate.py` runs every case in [evals/cases.json](evals/cases.json) several times and scores
+the runs with deterministic checks (no LLM judge). The latest report is in
+[evals/REPORT.md](evals/REPORT.md).
+
+| Check | How it is measured |
+|---|---|
+| Grounding | Every number in the answer is matched against the numbers in that run's tool outputs (0.5% rounding and unit changes allowed) |
+| Rating consistency | The same ticker gets the same BUY / HOLD / SELL in every run |
+| Rating rule | The stated rating matches the average-score rule |
+| Workflow | Briefs call all five specialists, step ① in parallel, then valuation, then the writer (from hook timings) |
+| Routing | Questions call the specialists they need, no others, and off-topic questions call none |
+
+The grounding check was validated with a negative control: the same answer with its numbers shifted by
+7% scores 18% instead of 100%.
+
+**Results** (3 tickers x 3 brief runs, 5 questions x 3 runs, 2026-10-30):
+
+| Metric | Result |
+|---|---|
+| Numbers traceable to a tool output | 97% (302 / 312) |
+| Rating follows the score rule | 9 / 9 briefs |
+| Same rating in every run | 2 / 3 tickers (RELIANCE.NS: HOLD, BUY, HOLD; its valuation score ranged 3-5) |
+| Workflow followed | 7 / 9 briefs |
+| Questions routed correctly | 9 / 9 completed runs |
+| Mean cost | full brief 37 s / ~45k tokens; question 10 s / ~10k tokens |
+
+What the evaluation found:
+
+- **A real bug.** The first evaluation showed a ValuationAgent answering without calling any tool. Strands'
+  `as_tool()` snapshots a specialist's conversation when the wrapper is created, so a second orchestrator
+  in the same process inherited the previous run's history. `orchestrator_agent()` now clears it (with a
+  regression test); tokens per brief fell from 86-120k to ~45k.
+- **Prompted parallelism is not guaranteed.** In 2 of 9 briefs the orchestrator called RiskAgent a turn
+  after the other two step ① specialists. Only a code-enforced workflow (e.g. a Strands Graph) would
+  guarantee it.
+- **The 10 untraceable numbers:** 5 were artifacts of the checker itself (a list number, rating averages),
+  since fixed; 5 were values the model computed itself, such as an implied price from the peer P/E.
+- **Not measured in this run:** the *Nvidia* and *weather* cases hit the Gemini free-tier quota after
+  ~45 minutes of evaluation. Rerun them with `python evaluate.py --match "Nvidia|weather"`.
+
+Raw runs, including every tool output, are saved to `evals/results/` (not committed), so a report can be
+rebuilt without model calls: `python evaluate.py --rescore evals/results/<stamp>.json`.
 
 ## Project layout
 
@@ -119,6 +165,8 @@ To try the tools against live Yahoo Finance data, without any LLM: `python tools
 | `bank_agent.py` | agent definitions, orchestrator, CLI and run summary |
 | `tools.py` | yfinance data tools, FinBERT sentiment, DCF and peer multiples |
 | `observability.py` | Strands hooks and a LiteLLM callback for the live run log |
+| `evaluate.py` | evaluation harness: grounding, consistency, workflow and routing checks |
+| `evals/` | evaluation cases and the latest report |
 | `tests/` | offline pytest suite |
 
 ## Known limitations
@@ -150,4 +198,6 @@ To try the tools against live Yahoo Finance data, without any LLM: `python tools
 - **Free-tier rate limits are real.** Gemini allows 15 requests per minute and Groq 8,000 tokens per
   minute, so several questions in quick succession hit them. Each agent retries rate limits, overloads
   and network errors with backoff (4s, 8s, 16s...), and each model falls back to the other; the run
-  log shows every failure and fallback in one line.
+  log shows every failure and fallback in one line. The cross-model fallback only covers errors before a
+  response starts streaming: a quota error mid-stream is retried on the same model, so once a daily
+  quota is used up, runs fail until it resets.

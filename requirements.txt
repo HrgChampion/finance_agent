@@ -1,7 +1,13 @@
-yfinance
-pandas
-python-dotenv
-strands-agents[litellm]
-truststore
-torch
-transformers
+yfinance==1.7.0
+pandas==3.1.0
+python-dotenv==1.2.4
+strands-agents[litellm]==1.62.0
+litellm==1.106.4
+truststore==0.10.5
+curl_cffi==0.16.3
+certifi==2026.10.23
+torch==2.15.0
+transformers==5.21.0
+
+# tests
+pytest==9.2.0

@@ -47,7 +47,8 @@ costs no extra network call. Gemini falls back to Groq if it is unavailable.
 
 ## Setup
 
-Requires Python 3.12+.
+Requires Python 3.12+ (developed on 3.14). Dependency versions are pinned to the ones this project
+was verified with.
 
 ```
 python -m venv .venv
@@ -98,7 +99,18 @@ orchestrator's, because every specialist report passes through its context. Step
 so its time is that of the slowest of the three agents (usually NewsAndSentimentAgent, because FinBERT
 runs on the CPU).
 
-To test the tools alone, without any LLM: `python tools.py`.
+## Tests
+
+```
+python -m pytest
+```
+
+The tests cover the tools and the non-LLM parts of the agent code: DCF maths and its guards (negative
+free cash flow, currency mismatch), ratios, peer premiums, currency labels, news filtering, sentiment
+labels, retry rules and the run summary. yfinance and FinBERT are replaced with fakes, so the suite
+runs offline, spends no tokens and finishes in under 30 seconds.
+
+To try the tools against live Yahoo Finance data, without any LLM: `python tools.py`.
 
 ## Project layout
 
@@ -107,6 +119,7 @@ To test the tools alone, without any LLM: `python tools.py`.
 | `bank_agent.py` | agent definitions, orchestrator, CLI and run summary |
 | `tools.py` | yfinance data tools, FinBERT sentiment, DCF and peer multiples |
 | `observability.py` | Strands hooks and a LiteLLM callback for the live run log |
+| `tests/` | offline pytest suite |
 
 ## Known limitations
 
